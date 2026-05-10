@@ -1,0 +1,7 @@
+# Data Processing
+pandas==2.1.4
+numpy>=1.26.0
+
+# Validation
+multimethod==1.10  # Bản ổn định cuối cùng trước 2.0
+pandera>0.18.0

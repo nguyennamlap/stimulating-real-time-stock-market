@@ -1,0 +1,36 @@
+FROM apache/spark:3.5.0
+
+WORKDIR /app
+
+# 1. Khai báo biến môi trường để Docker hiểu lệnh spark-submit
+ENV SPARK_HOME=/opt/spark
+ENV PATH=$SPARK_HOME/bin:$PATH
+
+USER root
+
+# 2. Tải và nạp thẳng JARs vào thư mục gốc của Spark
+# Chạy job SparkPi ảo để kích hoạt Ivy tải packages, sau đó dời file sang /opt/spark/jars/
+RUN spark-submit \
+    --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.kafka:kafka-clients:3.5.0,org.postgresql:postgresql:42.7.3,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 \
+    --class org.apache.spark.examples.SparkPi \
+    /opt/spark/examples/jars/spark-examples_*.jar 1 \
+    && cp /root/.ivy2/jars/*.jar /opt/spark/jars/ \
+    && rm -rf /root/.ivy2
+
+# 3. Cài đặt Python requirements cho PySpark processor
+COPY src/streaming/spark-processor/requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    --timeout 1000 --retries 10 -r requirements.txt
+
+# 4. Tạo thư mục logging và phân quyền
+RUN mkdir -p /app/logging \
+    && chown -R spark:spark /app/logging
+
+# Trả lại user chuẩn của base image để chạy ứng dụng an toàn
+USER spark
+
+# 5. Copy source code pipeline vào container
+COPY src/streaming/spark-processor/ /app/
+COPY src/utils /app/src/utils

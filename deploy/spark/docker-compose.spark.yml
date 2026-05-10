@@ -1,0 +1,105 @@
+
+services:
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: spark-master
+    hostname: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_SUBMIT_OPTIONS=--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0
+    ports:
+      - "8084:8080" # Web UI của Master
+      - "7077:7077" # Cổng giao tiếp RPC
+    volumes:
+      - .:/opt/spark/app
+    networks:
+      - your-network
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+
+  spark-worker:
+    image: apache/spark:3.5.0
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G # Giới hạn RAM tránh sập máy local
+      - SPARK_WORKER_CORES=2 # Giới hạn số core sử dụng
+      - SPARK_SUBMIT_OPTIONS=--packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0
+    ports:
+      - "8085:8081" # Web UI của Worker
+    depends_on:
+      - spark-master
+    networks:
+      - your-network 
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+      
+  spark-stream:
+    image: stock_spark:latest
+    container_name: spark-stream
+    depends_on:
+      spark-master:
+        condition: service_started
+    environment:
+      - APP_NAME=PostgresSparkApp
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC=${KAFKA_TOPIC_MAIN:-stock-ticks}
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    tty: true 
+    command: spark-submit spark_stream_processor.py
+    # command: >
+    #   spark-submit
+    #   --master spark://spark-master:7077
+    #   --deploy-mode cluster
+    #   /opt/spark/app/spark_stream_processor.py
+    env_file:
+      - .env
+    ports:
+      - "4040:4040" 
+    volumes:
+      - ../../logging/spark_logs:/app/logging
+      # - ../../src/streaming/spark-processor:/app
+    restart: always
+    networks:
+      - your-network 
+
+  dbt-transform:
+    image: ghcr.io/dbt-labs/dbt-postgres:latest
+    container_name: dbt-transform
+    volumes:
+      - ../../dbt/stock_dbt_project:/usr/app/dbt
+      - ../../dbt/profiles:/root/.dbt
+    environment:
+      - DBT_PROFILES_DIR=/root/.dbt
+      - DBT_PROJECT_DIR=/usr/app/dbt
+      - DBT_USER=${DB_USER}
+      - DBT_PASSWORD=${DB_PASSWORD}
+    tty: true
+    working_dir: /usr/app/dbt
+    entrypoint: [""]   
+    command: tail -f /dev/null 
+    networks:
+      - your-network
+
+  # metabase:
+  #   image: metabase/metabase:latest
+  #   container_name: metabase
+  #   restart: unless-stopped 
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - MB_DB_TYPE=postgres
+  #     - MB_DB_DBNAME=metabase_db
+  #     - MB_DB_PORT=5432
+  #     - MB_DB_USER=admin
+  #     - MB_DB_PASS=adminpassword
+  #     - MB_DB_HOST=postgres
+  #   networks:
+  #     - your-network 
+
+
+networks:
+  your-network:
+    external: true
+    name: your-network

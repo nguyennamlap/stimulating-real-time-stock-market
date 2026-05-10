@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: fact_stock
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+
+      - name: trading_date
+        tests:
+          - not_null
+
+  - name: stock_signal
+    columns:
+      - name: rsi_signal
+        tests:
+          - accepted_values:
+              values: ['BUY', 'SELL', 'WAIT']

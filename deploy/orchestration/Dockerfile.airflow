@@ -1,0 +1,23 @@
+FROM apache/airflow:2.7.2
+
+# Bước 1: Dùng quyền root để cài thư viện hệ thống
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       libssl-dev \
+       librdkafka-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bước 2: Chuyển về user airflow
+USER airflow
+
+# Bước 3: Nâng cấp pip trước khi cài đặt package
+RUN pip install --no-cache-dir --upgrade pip
+
+# Bước 4: Cài đặt thư viện Python với cờ ưu tiên bản binary
+RUN pip install --no-cache-dir --default-timeout=1000 --prefer-binary \
+    confluent-kafka \
+    requests \
+    apache-airflow-providers-telegram==4.2.0

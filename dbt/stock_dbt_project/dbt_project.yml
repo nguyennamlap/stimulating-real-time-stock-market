@@ -1,0 +1,33 @@
+name: stock_dbt_project
+version: 1.0
+config-version: 2
+
+profile: stock_dbt_project
+
+# 📂 Đường dẫn
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+
+models:
+  stock_dbt_project:
+
+    staging:
+      +materialized: view     # tạo VIEW (không lưu data)
+      +schema: staging        # nằm trong schema staging    
+
+    intermediate:
+      +materialized: table    # tạo TABLE thật
+      +schema: intermediate   # dùng cho xử lý logic (EMA, RSI…)
+
+    marts:
+      +materialized: table    # bảng cuối cùng
+      +schema: marts          # cho dashboard / BI / query

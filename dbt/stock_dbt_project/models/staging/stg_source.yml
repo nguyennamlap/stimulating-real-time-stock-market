@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: raw_data
+    database: stock_price
+    schema: spark_streaming
+    description: Dữ liệu chứng khoán thô từ hệ thống
+
+    tables:
+      - name: stock_table
+        description: Bảng chứa dữ liệu giao dịch hàng ngày và các chỉ số kỹ thuật
+
+        columns:
+          - name: ticker
+            tests:
+              - not_null
+
+          - name: trading_date
+            tests:
+              - not_null
+
+          - name: close_price
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: 0

@@ -1,43 +1,102 @@
-# ========== AIRFLOW ==========
-# Bỏ log, cache, plugin của Airflow
-airflow-2/workflow/logs/
-airflow-2/workflow/dags/__pycache__/
-airflow-2/workflow/plugins/
-
-# ========== EXTRACT ==========
-# Bỏ file script test/tạm thời
-Extract/cao1.py
-
-
-# Bỏ log trong load
-Transform/kafka-csv-project/load/*log
-
-# Bỏ các script thử nghiệm trong load
-Transform/kafka-csv-project/load/stream1.py
-Transform/kafka-csv-project/load/stream3.py
-Transform/kafka-csv-project/load/stream4.py
-Transform/kafka-csv-project/load/test.py
-
-# Bỏ file môi trường (chứa secret)
-Transform/kafka-csv-project/load/.env
-
-# ========== PYTHON ==========
-# Cache Python
+# =========================
+# Python
+# =========================
 __pycache__/
-*.pyc
-
-# Virtual environment
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+*.pyo
+*.pyd
+.Python
 venv/
-.env/
+.venv/
+env/
+ENV/
+logging/
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
 
-# ========== IDE ==========
+# =========================
+# Airflow
+# =========================
+airflow/logs/
+airflow/plugins/
+airflow/airflow.db
+airflow/standalone_admin_password.txt
+airflow/webserver_config.py
+
+# =========================
+# dbt
+# =========================
+dbt/stock_dbt_project/target/
+dbt/stock_dbt_project/logs/
+dbt/dbt_packages/
+dbt_packages/
+logs/
+target/
+
+# =========================
+# Spark / Kafka Logs
+# =========================
+logging/
+*.log
+
+# =========================
+# CSV / generated data
+# =========================
+data/*.csv
+!data/.gitkeep
+
+# =========================
+# Validation / error outputs
+# =========================
+errors_*.csv
+schema_errors_*.csv
+
+# =========================
+# IDE
+# =========================
 .vscode/
 .idea/
 
-# ========== SYSTEM ==========
+# =========================
+# OS files
+# =========================
 .DS_Store
 Thumbs.db
 
-create-topictest.sh
-setup-network.sh
-start.sh
+# =========================
+# Docker
+# =========================
+*.pid
+*.sock
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Build / cache
+# =========================
+.cache/
+pytest_cache/
+.mypy_cache/
+
+# =========================
+# Terraform (nếu có sau này)
+# =========================
+.terraform/
+
+# =========================
+# Secrets / keys
+# =========================
+*.pem
+*.key
+fernet_key*
+logging/

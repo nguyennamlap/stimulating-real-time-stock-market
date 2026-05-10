@@ -1,0 +1,13 @@
+stock_dbt_project:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: postgres-dw
+      user: "{{ env_var('DBT_USER') }}"
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      port: 5432
+      dbname: stock_price         # tên database của mày
+      schema: spark_streaming     # hoặc schema riêng: stock
+      threads: 4
+      keepalives_idle: 0

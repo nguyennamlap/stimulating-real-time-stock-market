@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: gap
+    description: "gap day"
+
+  - name: rank
+    description: "Ranking stocks by day and ticker"
+
+  - name: trend
+    description: "Trend detection using price close_price and open_price"
