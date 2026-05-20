@@ -79,12 +79,6 @@ def process_all_stocks(df,stock_list):
             result['error'] = 'Access denied to file'
             logger.error(f"✗ {stock_code}: Permission denied")
 
-        # Custom Exception do mình tự tạo trong hàm validate
-        except DataQualityError as e:
-            result['status'] = 'DATA_QUALITY_ERROR'
-            result['error'] = str(e)
-            logger.warning(f"⚠ {stock_code}: Data quality check failed") 
-            # Dùng warning thay vì error vì hệ thống vẫn chạy đúng, do data sai thôi
 
         except Exception as e:
             # Catch-all cho các lỗi không ngờ tới (MemoryError, ZeroDivision, v.v.)
