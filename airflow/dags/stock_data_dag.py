@@ -77,6 +77,7 @@ with DAG(
         network_mode=DOCKER_NETWORK,
         auto_remove='force',
         mount_tmp_dir=False,
+        command="test --profiles-dir /root/.dbt",
         environment=DBT_ENV,
         force_pull=False, 
     )

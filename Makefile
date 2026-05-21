@@ -16,10 +16,10 @@ down-infra:
 	docker-compose -f deploy/spark/docker-compose.spark.yml down
 
 up-airflow:
-	docker-compose -f deploy/airflow/docker-compose.airflow.yml up -d
+	docker-compose -f deploy/orchestration/docker-compose.airflow.yml up -d
 
 down-airflow:
-	docker-compose -f deploy/airflow/docker-compose.airflow.yml down
+	docker-compose -f deploy/orchestration/docker-compose.airflow.yml down
 
 
 dbt-run:

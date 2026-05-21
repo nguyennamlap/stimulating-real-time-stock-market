@@ -88,4 +88,4 @@ def process_all_stocks(df,stock_list):
         
         results.append(result)
 
-    return result
+    return results

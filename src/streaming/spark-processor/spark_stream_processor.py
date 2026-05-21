@@ -38,7 +38,7 @@ def create_spark_session(
 ) -> SparkSession:
 
     builder = SparkSession.builder \
-        .appName(app_name) \
+            .appName(app_name) 
   
     if jar_package:
         builder = builder.config("spark.jars.packages", jar_package)

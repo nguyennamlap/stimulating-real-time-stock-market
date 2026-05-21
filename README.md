@@ -1,151 +1,228 @@
 # Stimulating Real-Time Stock Market
 
-Hệ thống xử lý dữ liệu chứng khoán theo hướng **batch + streaming**, kết hợp **Airflow, Kafka, Spark, DBT, Postgres** và các lớp kiểm tra chất lượng dữ liệu để tạo pipeline gần real-time.
+A near real-time stock market data pipeline built with **Airflow, Kafka, Spark Structured Streaming, dbt, Postgres, and Docker**.  
+The project ingests stock data, validates and cleans it, streams it through Kafka, enriches it with technical indicators in Spark, and transforms it into analytics-ready models with dbt.
 
-## Mục tiêu dự án
+---
 
-* Crawl dữ liệu chứng khoán từ nguồn đầu vào.
-* Kiểm tra và làm sạch dữ liệu trước khi nạp vào hệ thống.
-* Đẩy dữ liệu vào Kafka để xử lý streaming.
-* Tính các chỉ báo kỹ thuật trong Spark.
-* Biến đổi dữ liệu bằng DBT để tạo các bảng mart phục vụ phân tích.
-* Theo dõi trạng thái pipeline và log theo từng lớp.
+## Overview
 
-## Kiến trúc tổng quan
+This repository demonstrates an end-to-end data engineering workflow for market data:
 
-Luồng xử lý chính:
+1. **Ingestion** — crawl stock history data from the source.
+2. **Quality Control** — validate schemas and filter bad records.
+3. **Streaming** — publish clean records to Kafka.
+4. **Processing** — enrich data in Spark with technical indicators.
+5. **Orchestration** — coordinate jobs with Airflow.
+6. **Transformation** — build staging, intermediate, and mart models with dbt.
+7. **Monitoring** — log each stage for easier debugging and operational visibility.
 
-1. **Ingestion**: crawl / trích xuất dữ liệu.
-2. **Quality Control**: validate schema, kiểm tra dữ liệu bẩn.
-3. **Streaming Producer**: đẩy dữ liệu vào Kafka.
-4. **Spark Processor**: xử lý stream, tính technical indicators.
-5. **Orchestration**: Airflow điều phối các job.
-6. **Transformation**: DBT xây dựng staging / intermediate / marts.
-7. **Monitoring & Logging**: theo dõi trạng thái và ghi log.
+The result is a production-style pipeline that is suitable for analytics, feature engineering, and downstream trading research.
 
-## Tính năng chính
 
-* Crawl dữ liệu chứng khoán.
-* Validate dữ liệu bằng schema.
-* Stream dữ liệu qua Kafka.
-* Xử lý dữ liệu thời gian thực bằng Spark.
-* Tính các chỉ báo kỹ thuật trong pipeline.
-* Mô hình hóa dữ liệu bằng DBT:
 
-  * **staging**
-  * **intermediate**
-  * **marts**
-* Có test dữ liệu cơ bản như:
+## Architecture
 
-  * `not_null_ticker`
-  * `positive_price`
-  * `unique_ticker_date`
-* Có logging riêng cho từng thành phần.
+```text
+Stock Source
+   ↓
+Ingestion / Crawl
+   ↓
+Validation & Cleaning
+   ↓
+Kafka Topic
+   ↓
+Spark Structured Streaming
+   ↓
+Postgres Raw Layer
+   ↓
+dbt Transformations
+   ├── staging
+   ├── intermediate
+   └── marts
+   ↓
+Analytics / BI / Feature Tables
+```
 
-## Cấu trúc thư mục
+---
+
+## Key Features
+
+- Stock data crawling and incremental loading
+- Schema validation with Pandera
+- Kafka-based event streaming
+- Spark Structured Streaming with watermarking
+- Technical indicator enrichment:
+  - EMA 20 / 50 / 200
+  - RSI
+  - MACD line, signal, histogram
+  - Bollinger Bands
+- dbt layer separation for clean analytics modeling
+- Data quality tests:
+  - `not_null_ticker`
+  - `positive_price`
+  - `unique_ticker_date`
+- Airflow orchestration with alerting support
+- Dockerized services for reproducible local development
+- Centralized logging for ingestion, validation, Kafka, and Spark jobs
+
+---
+
+## Tech Stack
+
+- **Orchestration:** Apache Airflow
+- **Streaming:** Apache Kafka, Spark Structured Streaming
+- **Storage:** PostgreSQL, MinIO
+- **Transformation:** dbt
+- **Validation:** Pandera, custom pandas-based checks
+- **Extraction:** Requests, pandas, boto3
+- **Containerization:** Docker, Docker Compose
+- **Monitoring & Logging:** Custom Python logging
+
+---
+
+## Repository Structure
 
 ```text
 .
-├── airflow/                 # DAG Airflow
-├── dbt/                     # DBT project, profiles, seeds, snapshots, tests
-├── deploy/                  # Docker Compose cho Kafka / Airflow / Spark / local debug
-├── logging/                 # Log files
-├── scripts/                 # Script tạo bảng, tạo key, network...
-└── src/                     # Source code chính
-    ├── ingestion/          # Trích xuất / crawl dữ liệu
-    ├── quality_control/    # Kiểm tra chất lượng dữ liệu
-    ├── streaming/          # Kafka producer, Spark processor, monitoring
-    ├── test/               # Test container / test runner
-    └── utils/              # Logger, tiện ích chung
+├── airflow/                 # Airflow DAGs and orchestration assets
+├── dbt/                     # dbt project, profiles, seeds, snapshots, tests
+├── deploy/                  # Docker Compose files for Kafka, Spark, Airflow, and local debugging
+├── scripts/                 # Helper scripts (table init, network setup, Fernet key generation)
+├── src/                     # Core application code
+│   ├── ingestion/           # Crawl and extraction logic
+│   ├── quality_control/     # Validation schemas and error handling
+│   ├── streaming/           # Kafka producer, Spark processor, monitoring
+│   └── utils/               # Shared utilities such as logging
+└── Makefile                 # Convenience commands for local development
 ```
 
-## Yêu cầu hệ thống
+---
 
-* Docker
-* Docker Compose
-* Python 3.10+ (tuỳ môi trường)
-* Apache Airflow
-* Kafka
-* Spark
-* Postgres
-* DBT
+## Data Flow
 
-## Cài đặt nhanh
+### 1) Ingestion
+The ingestion layer crawls stock history from the source and prepares raw pandas DataFrames.  
+It supports full and incremental loading modes and stores data through the pipeline for downstream processing.
 
-### 1. Clone repository
+### 2) Quality Control
+Before the data enters the streaming layer, it is validated using Pandera schemas and custom checks.  
+Invalid rows are captured, logged, and handled explicitly so the pipeline remains resilient.
 
-```bash
-git clone <repo-url>
-cd stimulating-real-time-stock-market
+### 3) Kafka Streaming
+Clean records are serialized as JSON and published to Kafka topics.  
+The producer is configured for safer delivery with idempotence, retries, and batching.
+
+### 4) Spark Processing
+Spark reads from Kafka, parses the payload, converts fields to proper types, and computes technical indicators.  
+The processor also uses watermarking to handle late events and reduce duplicate/state issues.
+
+### 5) Storage & Modeling
+Validated and enriched data is loaded into PostgreSQL and transformed with dbt into analytical layers:
+- **staging**: source normalization and incremental loading
+- **intermediate**: feature engineering, gap detection, ranking, trend logic
+- **marts**: final models such as stock dimensions, time dimensions, facts, and signals
+
+---
+
+## dbt Models
+
+### Staging
+- `stg_stock.sql`
+- `stg_stock_clean.sql`
+
+### Intermediate
+- `feature_engineering.sql`
+- `gap.sql`
+- `rank.sql`
+- `trend.sql`
+
+### Marts
+- `dim_stock.sql`
+- `dim_time.sql`
+- `fact_stock.sql`
+- `stock_signal.sql`
+
+---
+
+## Data Quality Tests
+
+dbt tests included in the project:
+
+- `not_null_ticker.sql`
+- `positive_price.sql`
+- `unique_ticker_date.sql`
+
+These tests help protect the warehouse from duplicate keys, invalid prices, and missing identifiers.
+
+---
+
+## Airflow
+
+The main DAG is located at:
+
+```text
+airflow/dags/stock_data_dag.py
 ```
 
-### 2. Tạo network / chuẩn bị môi trường
+It orchestrates the main pipeline stages:
 
-Nếu dự án của bạn dùng network riêng cho Docker:
+- initialize the database
+- run ingestion into Kafka
+- execute dbt transformation steps
+- send alerts when failures occur
+
+The DAG is designed for daily scheduling and can be extended with backfills, retries, or additional observability.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Docker
+- Docker Compose
+- Python 3.10+ (recommended)
+- PostgreSQL client tools if you want to run SQL manually
+
+### 1. Create the Docker network
 
 ```bash
 bash scripts/networks.sh
 ```
 
-### 3. Tạo bảng trong database
+### 2. Initialize the raw database schema
 
 ```bash
 psql -h <host> -U <user> -d <db> -f scripts/create_table.sql
 ```
 
-### 4. Tạo Fernet key cho Airflow
+### 3. Generate an Airflow Fernet key
 
 ```bash
 python scripts/generate_fernet_key.py
 ```
 
-## Chạy các dịch vụ bằng Docker Compose
+### 4. Build and start the stack
 
-### Kafka
-
-```bash
-cd deploy/kafka
-docker compose -f docker-compose.kafka.yml up -d
-```
-
-### Airflow
+Using the Makefile:
 
 ```bash
-cd deploy/orchestration
-docker compose -f docker-compose.airflow.yml up -d --build
+make build
+make up-infra
+make up-airflow
 ```
 
-### Spark
+Or run services individually:
 
 ```bash
-cd deploy/spark
-docker compose -f docker-compose.spark.yml up -d --build
+docker compose -f deploy/kafka/docker-compose.kafka.yml up -d
+docker compose -f deploy/spark/docker-compose.spark.yml up -d --build
+docker compose -f deploy/orchestration/docker-compose.airflow.yml up -d --build
 ```
 
-### Local debug crawl
+---
 
-```bash
-cd deploy/local_to_debug
-docker compose -f docker-compose.crawl.yml up -d --build
-```
-
-## DBT
-
-DBT project nằm trong:
-
-```text
-dbt/stock_dbt_project
-```
-
-### Các layer DBT
-
-* **staging**: chuẩn hóa dữ liệu nguồn.
-* **intermediate**: tạo logic trung gian như gap, rank, trend, feature engineering.
-* **marts**: tạo bảng phục vụ phân tích như dim/fact/signal.
-
-### Chạy DBT
-
-Ví dụ:
+## dbt Commands
 
 ```bash
 cd dbt/stock_dbt_project
@@ -156,177 +233,101 @@ dbt run
 dbt test
 ```
 
-## Airflow DAG
+If you are using the containerized workflow, the Makefile also provides:
 
-DAG chính nằm ở:
-
-```text
-airflow/dags/stock_data_dag.py
+```bash
+make dbt-run
+make dbt-test
 ```
 
-DAG này có thể dùng để:
+---
 
-* crawl dữ liệu
-* validate dữ liệu
-* đẩy dữ liệu vào pipeline streaming
-* kích hoạt job xử lý tiếp theo
+## Docker Compose Services
 
-## Ingestion
+### Kafka Stack
+Includes:
+- Kafka broker
+- Python producer for debugging
+- PostgreSQL warehouse
+- MinIO object storage
+- pgAdmin
+- Kafka UI
 
-Thư mục:
+### Spark Stack
+Includes:
+- Spark master
+- Spark worker
+- Spark streaming processor
+- dbt container for transformation tasks
 
-```text
-src/ingestion
-```
+### Airflow Stack
+Includes:
+- Airflow webserver
+- Airflow scheduler
+- Airflow initialization container
 
-Chứa logic trích xuất / crawl dữ liệu và file requirements riêng cho container ingestion.
-
-## Quality Control
-
-Thư mục:
-
-```text
-src/quality_control
-```
-
-Chức năng:
-
-* định nghĩa schema kiểm tra dữ liệu
-* validate dữ liệu đầu vào
-* loại bỏ hoặc đánh dấu bản ghi lỗi
-
-## Streaming
-
-Thư mục:
-
-```text
-src/streaming
-```
-
-Gồm 3 phần chính:
-
-* **monitoring**: health check, kiểm tra driver/stream.
-* **python_producer**: producer đẩy dữ liệu vào Kafka.
-* **spark-processor**: xử lý stream bằng Spark.
-
-### Producer
-
-```text
-src/streaming/python_producer/kafka_producer.py
-```
-
-### Spark processor
-
-```text
-src/streaming/spark-processor/spark_stream_processor.py
-```
-
-### Technical indicators
-
-```text
-src/streaming/spark-processor/logic/technical_indicators.py
-```
+---
 
 ## Logging
 
-Log được gom theo từng nhóm:
+The project writes logs into dedicated folders for easier debugging:
 
-* `logging/kafka_log/`
-* `logging/spark_logs/`
+- `logging/kafka_log/`
+- `logging/spark_logs/`
+- Airflow logs under `airflow/logs/`
 
-Mỗi service có thể ghi log riêng để dễ debug khi pipeline lỗi.
+Each service logs its own processing status, schema issues, and runtime errors.
 
-## Tests
-
-Thư mục:
-
-```text
-src/test
-```
-
-Ngoài ra DBT cũng có test riêng trong:
-
-```text
-dbt/stock_dbt_project/tests
-```
-
-### DBT tests đang có
-
-* `not_null_ticker.sql`
-* `positive_price.sql`
-* `unique_ticker_date.sql`
-
-## Các model DBT tiêu biểu
-
-### Staging
-
-* `stg_stock.sql`
-* `stg_stock_clean.sql`
-
-### Intermediate
-
-* `feature_engineering.sql`
-* `gap.sql`
-* `rank.sql`
-* `trend.sql`
-
-### Marts
-
-* `dim_stock.sql`
-* `dim_time.sql`
-* `fact_stock.sql`
-* `stock_signal.sql`
-
-## Seed và snapshot
-
-* `seeds/stock_info.csv`: dữ liệu seed.
-* `snapshots/snap_stock.sql`: snapshot lịch sử dữ liệu.
+---
 
 ## Troubleshooting
 
-### 1. Kafka không tạo được topic
-
-Kiểm tra script:
+### Kafka topic not created
+Check the topic creation script:
 
 ```bash
 bash deploy/kafka/create-topic.sh
 ```
 
-### 2. Airflow không đọc được biến / key
+### Airflow cannot connect to Postgres
+Verify:
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- Airflow connection settings
+- Docker network name
 
-Kiểm tra:
-
-* `profiles.yml`
-* `Dockerfile.airflow`
-* Fernet key
-* connection string tới Postgres
-
-### 3. DBT không connect được database
-
-Kiểm tra file:
+### dbt connection fails
+Check:
 
 ```text
 dbt/profiles/profiles.yml
 ```
 
-### 4. Spark job lỗi dependency
+and ensure the target database container is running.
 
-Kiểm tra file requirements trong:
+### Spark dependency errors
+Verify the Spark image includes the Kafka package and that the network name matches the Docker Compose configuration.
 
-```text
-src/streaming/spark-processor/requirements.txt
-```
+---
 
-## Gợi ý mở rộng
+## Future Improvements
 
-* Thêm dashboard quan sát realtime.
-* Thêm alert Telegram / email khi pipeline fail.
-* Thêm checkpointing cho streaming.
-* Thêm backfill theo lịch.
-* Thêm metric theo dõi độ trễ, số bản ghi, tỷ lệ lỗi.
+- Add a dashboard for pipeline health and latency
+- Add alerts via Telegram or email
+- Add checkpointing and replay support for streaming
+- Add backfill automation
+- Add more data quality checks and anomaly detection
+- Add feature store or ML training outputs
+
+---
 
 ## License
 
-Dự án hiện đang dùng file `LICENSE` ở root repository.
+This project is released under the terms of the repository license.
 
+---
 
+## Author
+
+Built as a portfolio-grade data engineering project for real-time stock market analytics.
